@@ -1,7 +1,7 @@
 """
 Service Module - Self-Contained MyEdit Online Integration
 Integrates with myEditOnline services.
-Uses SpamOK temp mail for on-the-fly account registration and verification.
+Uses Catchmail temp mail for on-the-fly account registration and verification.
 Saves created accounts directly to the database.
 """
 import os
@@ -15,6 +15,9 @@ import re
 import base64
 import threading
 import atexit
+import ssl
+import urllib.parse
+import urllib.request
 from urllib.parse import quote
 import requests
 from typing import Union
@@ -1541,81 +1544,135 @@ def get_available_models(mode=None):
     return models
 
 # ==============================================================================
-# MYEDIT ONLINE ALTYAPI VE KRIPTOGRAFİK YARDIMCILAR (od2.in)
+# MYEDIT ONLINE ALTYAPI VE KRIPTOGRAFİK YARDIMCILAR (Catchmail)
 # ==============================================================================
 
+CATCHMAIL_CTX = ssl.create_default_context()
+CATCHMAIL_CTX.check_hostname = False
+CATCHMAIL_CTX.verify_mode = ssl.CERT_NONE
+
 class TempMailClient:
-    """od2.in Temp Mail Entegrasyonu"""
-    def __init__(self):
-        self.session = requests.Session()
+    """Catchmail (api.catchmail.io) Temp Mail Entegrasyonu"""
+    BASE = "https://api.catchmail.io"
+
+    def __init__(self, domain: str = "catchmail.io"):
+        self.domain = domain
         self.box = None
         self.email = None
         self._seen_ids = set()
 
-    def get_email(self, length: int = 10) -> str:
-        self.box = "".join(secrets.choice(string.ascii_lowercase + string.digits) for _ in range(length))
-        self.email = f"{self.box}@tm.od2.in"
+    def get_email(self, length: int = 10, domain: str = "catchmail.io") -> str:
+        if domain:
+            self.domain = domain
+        self.box = "".join(random.choices(string.ascii_lowercase + string.digits, k=length))
+        self.email = f"{self.box}@{self.domain}"
         print(f"[Temp Mail] Created: {self.email}")
         return self.email
 
-    def _get_json(self, url: str, params: dict):
-        return self.session.get(
-            url,
-            params=params,
-            headers={
-                "user-agent": HEADERS["User-Agent"],
-                "accept": "*/*",
-                "referer": f"https://od2.in/temp-mail?id={params.get('id', self.box if self.box else '')}",
-            },
-            timeout=30,
-        ).json()
+    def _api(self, path: str, **params):
+        url = f"{self.BASE}{path}?{urllib.parse.urlencode(params)}"
+        try:
+            with urllib.request.urlopen(url, timeout=20, context=CATCHMAIL_CTX) as r:
+                return json.loads(r.read() or b"{}")
+        except Exception as e:
+            print(f"[Temp Mail] API hatasi ({path}): {e}")
+            return {}
 
     def wait_for_activation_link(self, timeout: int = 60) -> str:
-        print("[Temp Mail] Gelen kutusu sorgulaniyor...")
+        print(f"[Temp Mail] Gelen kutusu sorgulaniyor ({self.email})...")
         deadline = time.time() + timeout
 
         while time.time() < deadline:
             try:
-                inbox = self._get_json("https://od2.in/api/get-email", {"id": self.box})
+                mailbox_data = self._api("/api/v1/mailbox", address=self.email)
+                messages = mailbox_data.get("messages", [])
             except Exception as e:
                 print(f"[!] Inbox hatasi: {e}")
                 time.sleep(2)
                 continue
 
-            if inbox:
-                for item in inbox:
-                    msg_id = item.get("_id")
+            if messages:
+                for m in reversed(messages):
+                    msg_id = m.get("id")
                     if not msg_id or msg_id in self._seen_ids:
                         continue
                     self._seen_ids.add(msg_id)
 
-                    try:
-                        msg = self._get_json("https://od2.in/api/get-email", {"emailId": msg_id})
-                    except Exception as e:
-                        print(f"[!] Mesaj cekme hatasi: {e}")
+                    time.sleep(1)
+                    full = self._api(f"/api/v1/message/{msg_id}", mailbox=self.email)
+                    if not full:
                         continue
 
-                    subject = msg.get("subject") or ""
-                    text = (msg.get("text") or "") + "\n" + (msg.get("html") or "")
-                    print(f"[+] Yeni mail: {subject}")
+                    subject = full.get("subject") or ""
+                    sender = full.get("from") or ""
+                    body = full.get("body", {})
+                    html_content = body.get("html") or ""
+                    text_content = body.get("text") or re.sub(r"<[^>]+>", "", html_content)
+                    combined_text = (text_content or "") + "\n" + (html_content or "")
+                    print(f"[+] Yeni mail alindi! Kimden: {sender} | Konu: {subject}")
 
-                    # Trace linklerinden aktivasyon linkini bul
-                    trace_links = re.findall(r'https?://membership\.cyberlink\.com/prog/event/autoedm/trace_mem\.jsp\?[^\s"\'<>]+', text)
+                    # 1. CyberLink EDM Trace linklerinden aktivasyon linkini bul
+                    trace_links = re.findall(r'https?://membership\.cyberlink\.com/prog/event/autoedm/trace_mem\.jsp\?[^\s"\'<>]+', combined_text)
                     for link in trace_links:
                         link = link.replace("&amp;", "&")
                         if "account-activate" in link or "Activate" in link or "active-member" in link:
                             print(f"  -> Aktivasyon linki bulundu: {link[:80]}...")
                             return link
 
-                    # Fallback: Herhangi bir trace linki
+                    # 2. Herhangi bir CyberLink trace linki (fallback)
                     if trace_links:
                         link = trace_links[0].replace("&amp;", "&")
-                        print(f"  -> Link ayiklandi (fallback): {link[:80]}...")
+                        print(f"  -> Link ayiklandi (trace fallback): {link[:80]}...")
                         return link
 
-            time.sleep(2)
+                    # 3. Genel CyberLink / MyEdit aktivasyon linki (fallback)
+                    general_links = re.findall(r'https?://[^\s"\'<>]*(?:cyberlink|myedit)[^\s"\'<>]*(?:activate|confirm|verify|token)[^\s"\'<>]*', combined_text, re.IGNORECASE)
+                    for link in general_links:
+                        link = link.replace("&amp;", "&")
+                        print(f"  -> Link ayiklandi (genel fallback): {link[:80]}...")
+                        return link
+
+            time.sleep(3)
 
         raise TimeoutError("Aktivasyon maili gelmedi!")
+
+    def wait_for_code(self, timeout: int = 60) -> str:
+        """Eger dogrulama kodu gerekirse e-postadaki 4-8 haneli sayisal kodu dondurur."""
+        print(f"[Temp Mail] Kod bekleniyor ({self.email})...")
+        deadline = time.time() + timeout
+
+        while time.time() < deadline:
+            try:
+                mailbox_data = self._api("/api/v1/mailbox", address=self.email)
+                messages = mailbox_data.get("messages", [])
+            except Exception as e:
+                print(f"[!] Inbox hatasi: {e}")
+                time.sleep(2)
+                continue
+
+            if messages:
+                for m in reversed(messages):
+                    msg_id = m.get("id")
+                    if not msg_id or msg_id in self._seen_ids:
+                        continue
+                    self._seen_ids.add(msg_id)
+
+                    time.sleep(1)
+                    full = self._api(f"/api/v1/message/{msg_id}", mailbox=self.email)
+                    if not full:
+                        continue
+
+                    body = full.get("body", {})
+                    html_content = body.get("html") or ""
+                    text_content = body.get("text") or re.sub(r"<[^>]+>", "", html_content)
+                    codes = re.findall(r"\b\d{4,8}\b", text_content)
+                    if codes:
+                        print(f"[+] Dogrulama kodu bulundu: {codes[0]}")
+                        return codes[0]
+
+            time.sleep(3)
+
+        raise TimeoutError("Dogrulama kodu gelmedi!")
 
 # ================= MemberAuth Enkripsyon =================
 
