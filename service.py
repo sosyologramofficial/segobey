@@ -1583,6 +1583,35 @@ def generate_random_username(length: int = 10) -> str:
     return "".join(random.choices(chars, k=length))
 
 
+# ==============================================================================
+# TEMP MAIL PROXY AYARLARI (Render.com temp-mail.asia 403 Engeli İcin)
+# ==============================================================================
+# Render.com sunucularında temp-mail.asia IP engeline (403 Forbidden) takıldığı
+# için sadece temp mail isteklerine özel bu proxy alanı tanımlanmıştır.
+# Temp mail dışındaki CyberLink, resim, video vb. hiçbir istek bu proxy'yi KULLANMAZ.
+#
+# TEMP_MAIL_PROXY_MODE (Proxy Durumu):
+#   1 -> Temp mail istekleri Webshare proxy üzerinden geçer (Render.com için 1 yapın).
+#   0 -> Proxy devre dışı kalır, doğrudan sunucu IP'si üzerinden bağlanır.
+TEMP_MAIL_PROXY_MODE = 1
+
+TEMP_MAIL_PROXY_CONFIG = {
+    "http": "http://nrrbciri-1:5cauzsujeluf@p.webshare.io:80",
+    "https": "http://nrrbciri-1:5cauzsujeluf@p.webshare.io:80",
+}
+
+
+def apply_temp_mail_proxy(session: requests.Session):
+    """Sadece TempMailClient oturumuna proxy uygular.
+    
+    İleride proxy'yi tamamen kaldırmak isterseniz bu bloğu ve TempMailClient
+    içindeki apply_temp_mail_proxy(self.session) satırını silmeniz yeterlidir.
+    """
+    if TEMP_MAIL_PROXY_MODE == 1 and TEMP_MAIL_PROXY_CONFIG:
+        session.proxies.update(TEMP_MAIL_PROXY_CONFIG)
+# ==============================================================================
+
+
 class TempMailClient:
     """temp-mail.asia Livewire Entegrasyonu"""
 
@@ -1593,6 +1622,7 @@ class TempMailClient:
         self.box = None
         self.email = None
         self.session = requests.Session()
+        apply_temp_mail_proxy(self.session)
         self.csrf = None
         self.components = {}
         self.lw_headers = {}
