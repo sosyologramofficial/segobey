@@ -1156,11 +1156,6 @@
                             <button type="submit" class="button primary" id="generateButton" disabled><svg class="icon"><use href="#i-spark"/></svg><span>Oluştur</span></button>
                         </div>
                     </form>
-
-                    <div class="composer-footnote">
-                        Yapay zeka ile üretildi. Senin yaratıcılığınla şekillendi.
-                        <span class="shortcut-hint"> <kbd>Ctrl</kbd> + <kbd>Enter</kbd></span>
-                    </div>
                     <div id="generationFeedback" class="feedback" role="status" hidden></div>
                     <pre id="generationJson" class="json-box" hidden></pre>
                 </div>
@@ -4410,7 +4405,7 @@
                     makeButton(
                         'Üretimlerimde aç',
                         'grid',
-                        () => openTask(task.task_id)
+                        button => openTask(task.task_id, button)
                     )
                 );
             } else if (detailed) {
@@ -4418,10 +4413,10 @@
                     makeButton(
                         'Listeye dön',
                         'grid',
-                        () => fetchTasks({
+                        button => loading(button, 'Yükleniyor', () => fetchTasks({
                             single: false,
                             page: state.lastListPage
-                        })
+                        }))
                     )
                 );
             } else {
@@ -4429,7 +4424,7 @@
                     makeButton(
                         'Detay',
                         'eye',
-                        () => openTask(task.task_id)
+                        button => openTask(task.task_id, button)
                     )
                 );
             }
@@ -5016,7 +5011,7 @@
             }
         }
 
-        function openTask(taskId) {
+        async function openTask(taskId, button) {
             if (state.taskLoading || state.connecting) return;
 
             const id = String(taskId || '').trim();
@@ -5033,10 +5028,16 @@
             $('taskIdInput').value = id;
             showPage('library');
 
-            void fetchTasks({
+            const fetchAction = () => fetchTasks({
                 single: true,
                 taskId: id
             });
+
+            if (button) {
+                await loading(button, 'Yükleniyor', fetchAction);
+            } else {
+                await fetchAction();
+            }
         }
 
         /* Otomatik yenileme: yalnızca sayfa açıkken çalışır. */
@@ -5585,10 +5586,10 @@
         /* Arşiv sorguları ve sayfalama. */
 
         $('queryTaskButton').addEventListener('click', () => {
-            void fetchTasks({
+            void loading($('queryTaskButton'), 'Sorgulanıyor', () => fetchTasks({
                 single: true,
                 taskId: $('taskIdInput').value.trim()
-            });
+            }));
         });
 
         $('taskIdInput').addEventListener('keydown', event => {
@@ -5603,18 +5604,18 @@
         });
 
         $('allTasksButton').addEventListener('click', () => {
-            void fetchTasks({
+            void loading($('allTasksButton'), 'Yükleniyor', () => fetchTasks({
                 single: false,
                 page: state.lastListPage
-            });
+            }));
         });
 
         $('refreshTasksButton').addEventListener('click', () => {
-            void fetchTasks({
+            void loading($('refreshTasksButton'), 'Yenileniyor', () => fetchTasks({
                 single: state.taskView === 'single',
                 taskId: state.queriedId,
                 page: state.pageNumber
-            });
+            }));
         });
 
         $('previousPage').addEventListener('click', () => {
