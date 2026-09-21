@@ -3514,10 +3514,6 @@ def generate_ai_video_service(
         model_name_str = model_data["model"]
     vendor_str = model_data["vendor"]
 
-    prompt_limit = model_data.get("promptLength", 2500)
-    if user_prompt and len(user_prompt) > prompt_limit:
-        user_prompt = user_prompt[:prompt_limit]
-
     if effect_mode == "ReferenceToVideo":
         limit = model_data.get("reference_media_limit", {})
         supported_types = limit.get("supported_types", ["image"])
