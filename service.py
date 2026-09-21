@@ -3825,7 +3825,7 @@ def generate_ai_video_service(
     polling = apply_json.get("polling", {})
     delay = polling.get("delay", 5)
 
-    max_attempts = 120
+    max_attempts = 360
     decrypted_files = []
     for i in range(max_attempts):
         time.sleep(delay)
