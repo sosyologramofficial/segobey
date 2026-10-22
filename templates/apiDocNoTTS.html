@@ -1458,7 +1458,7 @@ print(resp.json())</code></pre>
                 </div>
 
                 <div class="alert warning">
-                    <strong>⚠️ Cost:</strong> This operation consumes 1 Quota.
+                    <strong>⚠️ Cost:</strong> This operation consumes 5 Quota.
                 </div>
             </section>
 
@@ -1471,7 +1471,7 @@ print(resp.json())</code></pre>
                     <code>/api/generate/video</code>
                 </div>
 
-                <p>Generate videos from text prompts or animate existing images using VEO_3_1 or GROK_VIDEO models.</p>
+                <p>Generate videos from text prompts, animate existing images, or create videos using reference images with <code>seedance_2_5</code>, <code>wan_3_0</code>, <code>gemini_omni_flash</code>, or <code>veo_3_1_fast</code> models.</p>
 
                 <h3>Request Body</h3>
                 <div class="table-wrap">
@@ -1489,49 +1489,66 @@ print(resp.json())</code></pre>
                                 <td><code>prompt</code></td>
                                 <td>string</td>
                                 <td><span class="badge required">Required</span></td>
-                                <td>Text description of the desired video/animation. <strong>Max 4000 characters.</strong></td>
+                                <td>Text description of the desired video/animation.<br>
+                                • <strong>seedance_2_5 &amp; wan_3_0:</strong> Max 20,000 characters<br>
+                                • <strong>veo_3_1_fast:</strong> Max 4,000 characters<br>
+                                • <strong>gemini_omni_flash:</strong> Max 3,500 characters</td>
                             </tr>
                             <tr>
                                 <td><code>model</code></td>
                                 <td>string</td>
                                 <td><span class="badge optional">Optional</span></td>
-                                <td>Video generation model:<br>
-                                • <strong>VEO_3_1</strong> (default) — Veo 3.1 (4, 6, 8 seconds; 720p, 1080p)<br>
-                                • <strong>GROK_VIDEO</strong> — Grok Video (8 seconds; 720p)</td>
+                                <td>Video generation model (default: <code>seedance_2_5</code>):<br>
+                                • <code>seedance_2_5</code> — Seedance 2.5 (BytePlus)<br>
+                                • <code>wan_3_0</code> — Wan 3.0 (Alibaba)<br>
+                                • <code>gemini_omni_flash</code> — Gemini Omni 1.1 Flash (Google)<br>
+                                • <code>veo_3_1_fast</code> — Veo 3.1 Fast (Google)</td>
                             </tr>
                             <tr>
                                 <td><code>size</code></td>
                                 <td>string</td>
                                 <td><span class="badge optional">Optional</span></td>
-                                <td><code>16:9</code>, <code>9:16</code> (default: <code>16:9</code>)</td>
+                                <td>Aspect ratio (default: <code>16:9</code>):<br>
+                                • <strong>seedance_2_5, wan_3_0:</strong> <code>16:9</code>, <code>9:16</code>, <code>1:1</code><br>
+                                • <strong>gemini_omni_flash, veo_3_1_fast:</strong> <code>16:9</code>, <code>9:16</code></td>
                             </tr>
                             <tr>
                                 <td><code>duration</code></td>
                                 <td>integer</td>
                                 <td><span class="badge optional">Optional</span></td>
-                                <td>Duration in seconds:<br>
-                                • <strong>VEO_3_1:</strong> <code>4</code>, <code>6</code>, <code>8</code> (default: <code>4</code>)<br>
-                                • <strong>GROK_VIDEO:</strong> <code>8</code> (default: <code>8</code>)</td>
+                                <td>Duration in seconds (default: <code>5</code> for Seedance, Wan, Gemini; <code>4</code> for Veo):<br>
+                                • <strong>seedance_2_5:</strong> <code>4</code> to <code>30</code> seconds (<code>1080p</code>: 4–12s, <code>720p</code>: 4–25s, <code>480p</code>: 4–30s)<br>
+                                • <strong>wan_3_0:</strong> <code>2</code> to <code>30</code> seconds<br>
+                                • <strong>gemini_omni_flash:</strong> <code>3</code> to <code>10</code> seconds<br>
+                                • <strong>veo_3_1_fast:</strong> <code>4</code>, <code>6</code>, <code>8</code> seconds</td>
                             </tr>
                             <tr>
                                 <td><code>resolution</code></td>
                                 <td>string</td>
                                 <td><span class="badge optional">Optional</span></td>
-                                <td>Video resolution:<br>
-                                • <strong>VEO_3_1:</strong> <code>720p</code>, <code>1080p</code> (default: <code>1080p</code>)<br>
-                                • <strong>GROK_VIDEO:</strong> <code>720p</code> (default: <code>720p</code>)</td>
+                                <td>Video resolution (default: <code>720p</code>):<br>
+                                • <strong>seedance_2_5:</strong> <code>480p</code>, <code>720p</code>, <code>1080p</code><br>
+                                • <strong>wan_3_0:</strong> <code>480p</code>, <code>720p</code>, <code>1080p</code> (Image-to-Video requires <code>1080p</code>)<br>
+                                • <strong>gemini_omni_flash:</strong> <code>360p</code>, <code>720p</code>, <code>1080p</code>, <code>4k</code><br>
+                                • <strong>veo_3_1_fast:</strong> <code>720p</code>, <code>1080p</code>, <code>4k</code></td>
                             </tr>
                             <tr>
                                 <td><code>start_frame</code></td>
                                 <td>string</td>
                                 <td><span class="badge optional">Optional</span></td>
-                                <td>Base64 encoded start frame image for image-to-video animation. Supported by <strong>VEO_3_1</strong> and <strong>GROK_VIDEO</strong>.</td>
+                                <td>Base64 encoded start frame image for image-to-video animation. Supported by <strong>seedance_2_5</strong>, <strong>wan_3_0</strong>, <strong>gemini_omni_flash</strong>, and <strong>veo_3_1_fast</strong>.</td>
                             </tr>
                             <tr>
                                 <td><code>end_frame</code></td>
                                 <td>string</td>
                                 <td><span class="badge optional">Optional</span></td>
-                                <td>Base64 encoded end frame image. Requires <code>start_frame</code> to also be provided. Supported by <strong>VEO_3_1</strong> and <strong>GROK_VIDEO</strong>.</td>
+                                <td>Base64 encoded end frame image. Requires <code>start_frame</code> to also be provided. Supported by <strong>seedance_2_5</strong>, <strong>wan_3_0</strong>, <strong>gemini_omni_flash</strong>, and <strong>veo_3_1_fast</strong>.</td>
+                            </tr>
+                            <tr>
+                                <td><code>reference_images</code></td>
+                                <td>array</td>
+                                <td><span class="badge optional">Optional</span></td>
+                                <td>Array of base64 encoded reference images (max <strong>5 images</strong>). Supported by <strong>seedance_2_5</strong>, <strong>wan_3_0</strong>, and <strong>gemini_omni_flash</strong>. (Not supported by <code>veo_3_1_fast</code>).</td>
                             </tr>
                         </tbody>
                     </table>
@@ -1540,13 +1557,182 @@ print(resp.json())</code></pre>
                 <div class="alert info">
                     <strong>📌 Video Model Info:</strong>
                     <ul>
-                        <li><strong>VEO_3_1 (default):</strong> Duration: 4, 6, 8 seconds. Resolution: 720p, 1080p (default: 1080p). Supports Text-to-Video and Image-to-Video (Start Frame, Start + End Frame).</li>
-                        <li><strong>GROK_VIDEO:</strong> Duration: 8 seconds. Resolution: 720p (default: 720p). Supports Text-to-Video and Image-to-Video (Start Frame, Start + End Frame).</li>
-                        <li><strong>Supported Sizes:</strong> 16:9, 9:16 (default: 16:9)</li>
+                        <li><strong>seedance_2_5 (default):</strong> Prompt max 20,000 chars. Supports Text-to-Video, Image-to-Video (Start Frame, Start + End Frame), and Reference-to-Video (max 5 reference images). Resolutions: <code>480p</code>, <code>720p</code>, <code>1080p</code> (default: <code>720p</code>). Durations: 1080p (4–12s), 720p (4–25s), 480p (4–30s). Aspect ratios: <code>16:9</code>, <code>9:16</code>, <code>1:1</code> (default: <code>16:9</code>).</li>
+                        <li><strong>wan_3_0:</strong> Prompt max 20,000 chars. Supports Text-to-Video, Image-to-Video (1080p only), and Reference-to-Video (max 5 reference images). Durations: 2–30 seconds (default: 5s). Resolutions: <code>480p</code>, <code>720p</code>, <code>1080p</code> (default: <code>720p</code>). Aspect ratios: <code>16:9</code>, <code>9:16</code>, <code>1:1</code> (default: <code>16:9</code>).</li>
+                        <li><strong>gemini_omni_flash:</strong> Prompt max 3,500 chars. Supports Text-to-Video, Image-to-Video, and Reference-to-Video (max 5 reference images). Durations: 3–10 seconds (default: 5s). Resolutions: <code>360p</code>, <code>720p</code>, <code>1080p</code>, <code>4k</code> (default: <code>720p</code>). Aspect ratios: <code>16:9</code>, <code>9:16</code> (default: <code>16:9</code>).</li>
+                        <li><strong>veo_3_1_fast:</strong> Prompt max 4,000 chars. Supports Text-to-Video and Image-to-Video (Start Frame, Start + End Frame). Durations: <code>4</code>, <code>6</code>, <code>8</code> seconds (default: 4s). Resolutions: <code>720p</code>, <code>1080p</code>, <code>4k</code> (default: <code>720p</code>). Aspect ratios: <code>16:9</code>, <code>9:16</code> (default: <code>16:9</code>). Reference images not supported.</li>
                     </ul>
                 </div>
 
-                <h3>Example Request (VEO 3.1 Model — Text-to-Video)</h3>
+                <h3>Example Request (Seedance 2.5 Model — Text-to-Video)</h3>
+                <div class="code-tabs">
+                    <div class="tab-headers">
+                        <button class="tab-btn active" onclick="showTab(this, 'vid-seedance-t2v-curl')">CURL</button>
+                        <button class="tab-btn" onclick="showTab(this, 'vid-seedance-t2v-py')">PYTHON</button>
+                        <button class="copy-btn" onclick="copyActiveTab(this)">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            Copy
+                        </button>
+                    </div>
+                    <div id="vid-seedance-t2v-curl" class="tab-panel active">
+<pre><code>curl -X POST http://127.0.0.1:5000/api/generate/video \
+  -H <span class="code-string">"Authorization: Bearer YOUR_API_KEY"</span> \
+  -H <span class="code-string">"Content-Type: application/json"</span> \
+  -d '{
+    <span class="code-key">"prompt"</span>: <span class="code-string">"a dragon flying over mountains, cinematic 8k"</span>,
+    <span class="code-key">"model"</span>: <span class="code-string">"seedance_2_5"</span>,
+    <span class="code-key">"resolution"</span>: <span class="code-string">"720p"</span>,
+    <span class="code-key">"duration"</span>: <span class="code-number">5</span>,
+    <span class="code-key">"size"</span>: <span class="code-string">"16:9"</span>
+  }'</code></pre>
+                    </div>
+                    <div id="vid-seedance-t2v-py" class="tab-panel">
+<pre><code><span class="code-keyword">import</span> requests
+
+url = <span class="code-string">"http://127.0.0.1:5000/api/generate/video"</span>
+payload = {
+    <span class="code-string">"prompt"</span>: <span class="code-string">"a dragon flying over mountains, cinematic 8k"</span>,
+    <span class="code-string">"model"</span>: <span class="code-string">"seedance_2_5"</span>,
+    <span class="code-string">"resolution"</span>: <span class="code-string">"720p"</span>,
+    <span class="code-string">"duration"</span>: <span class="code-number">5</span>,
+    <span class="code-string">"size"</span>: <span class="code-string">"16:9"</span>
+}
+headers = {<span class="code-string">"Authorization"</span>: <span class="code-string">"Bearer YOUR_API_KEY"</span>}
+
+resp = requests.post(url, json=payload, headers=headers)
+print(resp.json())</code></pre>
+                    </div>
+                </div>
+
+                <h3>Example Request (Seedance 2.5 Model — Image-to-Video)</h3>
+                <div class="code-tabs">
+                    <div class="tab-headers">
+                        <button class="tab-btn active" onclick="showTab(this, 'vid-seedance-i2v-curl')">CURL</button>
+                        <button class="tab-btn" onclick="showTab(this, 'vid-seedance-i2v-py')">PYTHON</button>
+                        <button class="copy-btn" onclick="copyActiveTab(this)">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            Copy
+                        </button>
+                    </div>
+                    <div id="vid-seedance-i2v-curl" class="tab-panel active">
+<pre><code>curl -X POST http://127.0.0.1:5000/api/generate/video \
+  -H <span class="code-string">"Authorization: Bearer YOUR_API_KEY"</span> \
+  -H <span class="code-string">"Content-Type: application/json"</span> \
+  -d '{
+    <span class="code-key">"prompt"</span>: <span class="code-string">"smooth cinematic motion, subtle camera pan"</span>,
+    <span class="code-key">"start_frame"</span>: <span class="code-string">"BASE64_ENCODED_IMAGE_HERE"</span>,
+    <span class="code-key">"model"</span>: <span class="code-string">"seedance_2_5"</span>,
+    <span class="code-key">"resolution"</span>: <span class="code-string">"720p"</span>,
+    <span class="code-key">"duration"</span>: <span class="code-number">5</span>,
+    <span class="code-key">"size"</span>: <span class="code-string">"16:9"</span>
+  }'</code></pre>
+                    </div>
+                    <div id="vid-seedance-i2v-py" class="tab-panel">
+<pre><code><span class="code-keyword">import</span> requests
+
+url = <span class="code-string">"http://127.0.0.1:5000/api/generate/video"</span>
+payload = {
+    <span class="code-string">"prompt"</span>: <span class="code-string">"smooth cinematic motion, subtle camera pan"</span>,
+    <span class="code-string">"start_frame"</span>: <span class="code-string">"BASE64_ENCODED_IMAGE_HERE"</span>,
+    <span class="code-string">"model"</span>: <span class="code-string">"seedance_2_5"</span>,
+    <span class="code-string">"resolution"</span>: <span class="code-string">"720p"</span>,
+    <span class="code-string">"duration"</span>: <span class="code-number">5</span>,
+    <span class="code-string">"size"</span>: <span class="code-string">"16:9"</span>
+}
+headers = {<span class="code-string">"Authorization"</span>: <span class="code-string">"Bearer YOUR_API_KEY"</span>}
+
+resp = requests.post(url, json=payload, headers=headers)
+print(resp.json())</code></pre>
+                    </div>
+                </div>
+
+                <h3>Example Request (Seedance 2.5 Model — Start Frame + End Frame)</h3>
+                <div class="code-tabs">
+                    <div class="tab-headers">
+                        <button class="tab-btn active" onclick="showTab(this, 'vid-seedance-endframe-curl')">CURL</button>
+                        <button class="tab-btn" onclick="showTab(this, 'vid-seedance-endframe-py')">PYTHON</button>
+                        <button class="copy-btn" onclick="copyActiveTab(this)">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            Copy
+                        </button>
+                    </div>
+                    <div id="vid-seedance-endframe-curl" class="tab-panel active">
+<pre><code>curl -X POST http://127.0.0.1:5000/api/generate/video \
+  -H <span class="code-string">"Authorization: Bearer YOUR_API_KEY"</span> \
+  -H <span class="code-string">"Content-Type: application/json"</span> \
+  -d '{
+    <span class="code-key">"prompt"</span>: <span class="code-string">"smooth camera transition between scenes"</span>,
+    <span class="code-key">"model"</span>: <span class="code-string">"seedance_2_5"</span>,
+    <span class="code-key">"start_frame"</span>: <span class="code-string">"BASE64_START_FRAME"</span>,
+    <span class="code-key">"end_frame"</span>: <span class="code-string">"BASE64_END_FRAME"</span>,
+    <span class="code-key">"resolution"</span>: <span class="code-string">"720p"</span>,
+    <span class="code-key">"duration"</span>: <span class="code-number">6</span>,
+    <span class="code-key">"size"</span>: <span class="code-string">"16:9"</span>
+  }'</code></pre>
+                    </div>
+                    <div id="vid-seedance-endframe-py" class="tab-panel">
+<pre><code><span class="code-keyword">import</span> requests
+
+url = <span class="code-string">"http://127.0.0.1:5000/api/generate/video"</span>
+payload = {
+    <span class="code-string">"prompt"</span>: <span class="code-string">"smooth camera transition between scenes"</span>,
+    <span class="code-string">"model"</span>: <span class="code-string">"seedance_2_5"</span>,
+    <span class="code-string">"start_frame"</span>: <span class="code-string">"BASE64_START_FRAME"</span>,
+    <span class="code-string">"end_frame"</span>: <span class="code-string">"BASE64_END_FRAME"</span>,
+    <span class="code-string">"resolution"</span>: <span class="code-string">"720p"</span>,
+    <span class="code-string">"duration"</span>: <span class="code-number">6</span>,
+    <span class="code-string">"size"</span>: <span class="code-string">"16:9"</span>
+}
+headers = {<span class="code-string">"Authorization"</span>: <span class="code-string">"Bearer YOUR_API_KEY"</span>}
+
+resp = requests.post(url, json=payload, headers=headers)
+print(resp.json())</code></pre>
+                    </div>
+                </div>
+
+                <h3>Example Request (Wan 3.0 Model — Reference-to-Video)</h3>
+                <div class="code-tabs">
+                    <div class="tab-headers">
+                        <button class="tab-btn active" onclick="showTab(this, 'vid-wan-ref-curl')">CURL</button>
+                        <button class="tab-btn" onclick="showTab(this, 'vid-wan-ref-py')">PYTHON</button>
+                        <button class="copy-btn" onclick="copyActiveTab(this)">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
+                            Copy
+                        </button>
+                    </div>
+                    <div id="vid-wan-ref-curl" class="tab-panel active">
+<pre><code>curl -X POST http://127.0.0.1:5000/api/generate/video \
+  -H <span class="code-string">"Authorization: Bearer YOUR_API_KEY"</span> \
+  -H <span class="code-string">"Content-Type: application/json"</span> \
+  -d '{
+    <span class="code-key">"prompt"</span>: <span class="code-string">"consistent character walking through neon-lit streets, cinematic"</span>,
+    <span class="code-key">"model"</span>: <span class="code-string">"wan_3_0"</span>,
+    <span class="code-key">"reference_images"</span>: [<span class="code-string">"BASE64_REF_IMAGE_1"</span>, <span class="code-string">"BASE64_REF_IMAGE_2"</span>],
+    <span class="code-key">"resolution"</span>: <span class="code-string">"720p"</span>,
+    <span class="code-key">"duration"</span>: <span class="code-number">5</span>,
+    <span class="code-key">"size"</span>: <span class="code-string">"16:9"</span>
+  }'</code></pre>
+                    </div>
+                    <div id="vid-wan-ref-py" class="tab-panel">
+<pre><code><span class="code-keyword">import</span> requests
+
+url = <span class="code-string">"http://127.0.0.1:5000/api/generate/video"</span>
+payload = {
+    <span class="code-string">"prompt"</span>: <span class="code-string">"consistent character walking through neon-lit streets, cinematic"</span>,
+    <span class="code-string">"model"</span>: <span class="code-string">"wan_3_0"</span>,
+    <span class="code-string">"reference_images"</span>: [<span class="code-string">"BASE64_REF_IMAGE_1"</span>, <span class="code-string">"BASE64_REF_IMAGE_2"</span>],
+    <span class="code-string">"resolution"</span>: <span class="code-string">"720p"</span>,
+    <span class="code-string">"duration"</span>: <span class="code-number">5</span>,
+    <span class="code-string">"size"</span>: <span class="code-string">"16:9"</span>
+}
+headers = {<span class="code-string">"Authorization"</span>: <span class="code-string">"Bearer YOUR_API_KEY"</span>}
+
+resp = requests.post(url, json=payload, headers=headers)
+print(resp.json())</code></pre>
+                    </div>
+                </div>
+
+                <h3>Example Request (Veo 3.1 Fast Model — Text-to-Video)</h3>
                 <div class="code-tabs">
                     <div class="tab-headers">
                         <button class="tab-btn active" onclick="showTab(this, 'vid-veo-t2v-curl')">CURL</button>
@@ -1561,8 +1747,8 @@ print(resp.json())</code></pre>
   -H <span class="code-string">"Authorization: Bearer YOUR_API_KEY"</span> \
   -H <span class="code-string">"Content-Type: application/json"</span> \
   -d '{
-    <span class="code-key">"prompt"</span>: <span class="code-string">"a dragon flying over mountains, cinematic 8k"</span>,
-    <span class="code-key">"model"</span>: <span class="code-string">"VEO_3_1"</span>,
+    <span class="code-key">"prompt"</span>: <span class="code-string">"a majestic eagle soaring over snow-capped mountains, cinematic 4k"</span>,
+    <span class="code-key">"model"</span>: <span class="code-string">"veo_3_1_fast"</span>,
     <span class="code-key">"resolution"</span>: <span class="code-string">"1080p"</span>,
     <span class="code-key">"duration"</span>: <span class="code-number">4</span>,
     <span class="code-key">"size"</span>: <span class="code-string">"16:9"</span>
@@ -1573,180 +1759,10 @@ print(resp.json())</code></pre>
 
 url = <span class="code-string">"http://127.0.0.1:5000/api/generate/video"</span>
 payload = {
-    <span class="code-string">"prompt"</span>: <span class="code-string">"a dragon flying over mountains, cinematic 8k"</span>,
-    <span class="code-string">"model"</span>: <span class="code-string">"VEO_3_1"</span>,
+    <span class="code-string">"prompt"</span>: <span class="code-string">"a majestic eagle soaring over snow-capped mountains, cinematic 4k"</span>,
+    <span class="code-string">"model"</span>: <span class="code-string">"veo_3_1_fast"</span>,
     <span class="code-string">"resolution"</span>: <span class="code-string">"1080p"</span>,
     <span class="code-string">"duration"</span>: <span class="code-number">4</span>,
-    <span class="code-string">"size"</span>: <span class="code-string">"16:9"</span>
-}
-headers = {<span class="code-string">"Authorization"</span>: <span class="code-string">"Bearer YOUR_API_KEY"</span>}
-
-resp = requests.post(url, json=payload, headers=headers)
-print(resp.json())</code></pre>
-                    </div>
-                </div>
-
-                <h3>Example Request (VEO 3.1 Model — Image-to-Video)</h3>
-                <div class="code-tabs">
-                    <div class="tab-headers">
-                        <button class="tab-btn active" onclick="showTab(this, 'vid-veo-i2v-curl')">CURL</button>
-                        <button class="tab-btn" onclick="showTab(this, 'vid-veo-i2v-py')">PYTHON</button>
-                        <button class="copy-btn" onclick="copyActiveTab(this)">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                            Copy
-                        </button>
-                    </div>
-                    <div id="vid-veo-i2v-curl" class="tab-panel active">
-<pre><code>curl -X POST http://127.0.0.1:5000/api/generate/video \
-  -H <span class="code-string">"Authorization: Bearer YOUR_API_KEY"</span> \
-  -H <span class="code-string">"Content-Type: application/json"</span> \
-  -d '{
-    <span class="code-key">"prompt"</span>: <span class="code-string">"smooth cinematic motion, subtle camera pan"</span>,
-    <span class="code-key">"start_frame"</span>: <span class="code-string">"BASE64_ENCODED_IMAGE_HERE"</span>,
-    <span class="code-key">"model"</span>: <span class="code-string">"VEO_3_1"</span>,
-    <span class="code-key">"resolution"</span>: <span class="code-string">"1080p"</span>,
-    <span class="code-key">"duration"</span>: <span class="code-number">4</span>,
-    <span class="code-key">"size"</span>: <span class="code-string">"16:9"</span>
-  }'</code></pre>
-                    </div>
-                    <div id="vid-veo-i2v-py" class="tab-panel">
-<pre><code><span class="code-keyword">import</span> requests
-
-url = <span class="code-string">"http://127.0.0.1:5000/api/generate/video"</span>
-payload = {
-    <span class="code-string">"prompt"</span>: <span class="code-string">"smooth cinematic motion, subtle camera pan"</span>,
-    <span class="code-string">"start_frame"</span>: <span class="code-string">"BASE64_ENCODED_IMAGE_HERE"</span>,
-    <span class="code-string">"model"</span>: <span class="code-string">"VEO_3_1"</span>,
-    <span class="code-string">"resolution"</span>: <span class="code-string">"1080p"</span>,
-    <span class="code-string">"duration"</span>: <span class="code-number">4</span>,
-    <span class="code-string">"size"</span>: <span class="code-string">"16:9"</span>
-}
-headers = {<span class="code-string">"Authorization"</span>: <span class="code-string">"Bearer YOUR_API_KEY"</span>}
-
-resp = requests.post(url, json=payload, headers=headers)
-print(resp.json())</code></pre>
-                    </div>
-                </div>
-
-                <h3>Example Request (VEO 3.1 Model — Start Frame + End Frame)</h3>
-                <div class="code-tabs">
-                    <div class="tab-headers">
-                        <button class="tab-btn active" onclick="showTab(this, 'vid-veo-endframe-curl')">CURL</button>
-                        <button class="tab-btn" onclick="showTab(this, 'vid-veo-endframe-py')">PYTHON</button>
-                        <button class="copy-btn" onclick="copyActiveTab(this)">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                            Copy
-                        </button>
-                    </div>
-                    <div id="vid-veo-endframe-curl" class="tab-panel active">
-<pre><code>curl -X POST http://127.0.0.1:5000/api/generate/video \
-  -H <span class="code-string">"Authorization: Bearer YOUR_API_KEY"</span> \
-  -H <span class="code-string">"Content-Type: application/json"</span> \
-  -d '{
-    <span class="code-key">"prompt"</span>: <span class="code-string">"smooth camera transition between scenes"</span>,
-    <span class="code-key">"model"</span>: <span class="code-string">"VEO_3_1"</span>,
-    <span class="code-key">"start_frame"</span>: <span class="code-string">"BASE64_START_FRAME"</span>,
-    <span class="code-key">"end_frame"</span>: <span class="code-string">"BASE64_END_FRAME"</span>,
-    <span class="code-key">"resolution"</span>: <span class="code-string">"1080p"</span>,
-    <span class="code-key">"duration"</span>: <span class="code-number">6</span>,
-    <span class="code-key">"size"</span>: <span class="code-string">"16:9"</span>
-  }'</code></pre>
-                    </div>
-                    <div id="vid-veo-endframe-py" class="tab-panel">
-<pre><code><span class="code-keyword">import</span> requests
-
-url = <span class="code-string">"http://127.0.0.1:5000/api/generate/video"</span>
-payload = {
-    <span class="code-string">"prompt"</span>: <span class="code-string">"smooth camera transition between scenes"</span>,
-    <span class="code-string">"model"</span>: <span class="code-string">"VEO_3_1"</span>,
-    <span class="code-string">"start_frame"</span>: <span class="code-string">"BASE64_START_FRAME"</span>,
-    <span class="code-string">"end_frame"</span>: <span class="code-string">"BASE64_END_FRAME"</span>,
-    <span class="code-string">"resolution"</span>: <span class="code-string">"1080p"</span>,
-    <span class="code-string">"duration"</span>: <span class="code-number">6</span>,
-    <span class="code-string">"size"</span>: <span class="code-string">"16:9"</span>
-}
-headers = {<span class="code-string">"Authorization"</span>: <span class="code-string">"Bearer YOUR_API_KEY"</span>}
-
-resp = requests.post(url, json=payload, headers=headers)
-print(resp.json())</code></pre>
-                    </div>
-                </div>
-
-                <h3>Example Request (GROK VIDEO Model — Text-to-Video)</h3>
-                <div class="code-tabs">
-                    <div class="tab-headers">
-                        <button class="tab-btn active" onclick="showTab(this, 'vid-grok-t2v-curl')">CURL</button>
-                        <button class="tab-btn" onclick="showTab(this, 'vid-grok-t2v-py')">PYTHON</button>
-                        <button class="copy-btn" onclick="copyActiveTab(this)">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                            Copy
-                        </button>
-                    </div>
-                    <div id="vid-grok-t2v-curl" class="tab-panel active">
-<pre><code>curl -X POST http://127.0.0.1:5000/api/generate/video \
-  -H <span class="code-string">"Authorization: Bearer YOUR_API_KEY"</span> \
-  -H <span class="code-string">"Content-Type: application/json"</span> \
-  -d '{
-    <span class="code-key">"prompt"</span>: <span class="code-string">"a cybernetic tiger running through neon rain, cinematic"</span>,
-    <span class="code-key">"model"</span>: <span class="code-string">"GROK_VIDEO"</span>,
-    <span class="code-key">"resolution"</span>: <span class="code-string">"720p"</span>,
-    <span class="code-key">"duration"</span>: <span class="code-number">8</span>,
-    <span class="code-key">"size"</span>: <span class="code-string">"16:9"</span>
-  }'</code></pre>
-                    </div>
-                    <div id="vid-grok-t2v-py" class="tab-panel">
-<pre><code><span class="code-keyword">import</span> requests
-
-url = <span class="code-string">"http://127.0.0.1:5000/api/generate/video"</span>
-payload = {
-    <span class="code-string">"prompt"</span>: <span class="code-string">"a cybernetic tiger running through neon rain, cinematic"</span>,
-    <span class="code-string">"model"</span>: <span class="code-string">"GROK_VIDEO"</span>,
-    <span class="code-string">"resolution"</span>: <span class="code-string">"720p"</span>,
-    <span class="code-string">"duration"</span>: <span class="code-number">8</span>,
-    <span class="code-string">"size"</span>: <span class="code-string">"16:9"</span>
-}
-headers = {<span class="code-string">"Authorization"</span>: <span class="code-string">"Bearer YOUR_API_KEY"</span>}
-
-resp = requests.post(url, json=payload, headers=headers)
-print(resp.json())</code></pre>
-                    </div>
-                </div>
-
-                <h3>Example Request (GROK VIDEO Model — Start Frame + End Frame)</h3>
-                <div class="code-tabs">
-                    <div class="tab-headers">
-                        <button class="tab-btn active" onclick="showTab(this, 'vid-grok-i2v-curl')">CURL</button>
-                        <button class="tab-btn" onclick="showTab(this, 'vid-grok-i2v-py')">PYTHON</button>
-                        <button class="copy-btn" onclick="copyActiveTab(this)">
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>
-                            Copy
-                        </button>
-                    </div>
-                    <div id="vid-grok-i2v-curl" class="tab-panel active">
-<pre><code>curl -X POST http://127.0.0.1:5000/api/generate/video \
-  -H <span class="code-string">"Authorization: Bearer YOUR_API_KEY"</span> \
-  -H <span class="code-string">"Content-Type: application/json"</span> \
-  -d '{
-    <span class="code-key">"prompt"</span>: <span class="code-string">"smooth transformation between frames, cinematic"</span>,
-    <span class="code-key">"model"</span>: <span class="code-string">"GROK_VIDEO"</span>,
-    <span class="code-key">"start_frame"</span>: <span class="code-string">"BASE64_START_FRAME"</span>,
-    <span class="code-key">"end_frame"</span>: <span class="code-string">"BASE64_END_FRAME"</span>,
-    <span class="code-key">"resolution"</span>: <span class="code-string">"720p"</span>,
-    <span class="code-key">"duration"</span>: <span class="code-number">8</span>,
-    <span class="code-key">"size"</span>: <span class="code-string">"16:9"</span>
-  }'</code></pre>
-                    </div>
-                    <div id="vid-grok-i2v-py" class="tab-panel">
-<pre><code><span class="code-keyword">import</span> requests
-
-url = <span class="code-string">"http://127.0.0.1:5000/api/generate/video"</span>
-payload = {
-    <span class="code-string">"prompt"</span>: <span class="code-string">"smooth transformation between frames, cinematic"</span>,
-    <span class="code-string">"model"</span>: <span class="code-string">"GROK_VIDEO"</span>,
-    <span class="code-string">"start_frame"</span>: <span class="code-string">"BASE64_START_FRAME"</span>,
-    <span class="code-string">"end_frame"</span>: <span class="code-string">"BASE64_END_FRAME"</span>,
-    <span class="code-string">"resolution"</span>: <span class="code-string">"720p"</span>,
-    <span class="code-string">"duration"</span>: <span class="code-number">8</span>,
     <span class="code-string">"size"</span>: <span class="code-string">"16:9"</span>
 }
 headers = {<span class="code-string">"Authorization"</span>: <span class="code-string">"Bearer YOUR_API_KEY"</span>}
@@ -1766,7 +1782,7 @@ print(resp.json())</code></pre>
                 </div>
 
                 <div class="alert warning">
-                    <strong>⚠️ Cost:</strong> This operation consumes 1 Quota.
+                    <strong>⚠️ Cost:</strong> This operation consumes 10 Quota.
                 </div>
             </section>
 
@@ -1852,10 +1868,10 @@ print(resp.json())</code></pre>
   <span class="code-key">"created_at"</span>: <span class="code-string">"Sat, 19 Sep 2026 16:05:00 GMT"</span>,
   <span class="code-key">"logs"</span>: [],
   <span class="code-key">"mode"</span>: <span class="code-string">"video"</span>,
-  <span class="code-key">"model"</span>: <span class="code-string">"VEO_3_1"</span>,
+  <span class="code-key">"model"</span>: <span class="code-string">"seedance_2_5"</span>,
   <span class="code-key">"prompt"</span>: <span class="code-string">"a dragon flying over mountains, cinematic"</span>,
   <span class="code-key">"reference_image_urls"</span>: [],
-  <span class="code-key">"resolution"</span>: <span class="code-string">"1080p"</span>,
+  <span class="code-key">"resolution"</span>: <span class="code-string">"720p"</span>,
   <span class="code-key">"result_url"</span>: <span class="code-bool">null</span>,
   <span class="code-key">"size"</span>: <span class="code-string">"16:9"</span>,
   <span class="code-key">"status"</span>: <span class="code-string">"running"</span>,
