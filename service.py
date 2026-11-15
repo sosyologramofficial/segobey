@@ -2562,13 +2562,23 @@ def signup(email: str, password: str, lang: str = "enu", country: str = "US"):
         "nJoint": 62
     }
     payload, aes_key = create_member_auth_payload(user_data)
-    res = requests.post(SIGNUP_URL, json=payload, headers=MEMBER_HEADERS, timeout=30)
-    res.raise_for_status()
-    body = res.json()
-    if body.get("status") == "SUCCESS" and "info" in body:
-        decrypted = decrypt_member_auth_response(body["info"], aes_key)
-        return {"status": "SUCCESS", "info": decrypted}
-    return body
+    try:
+        res = requests.post(SIGNUP_URL, json=payload, headers=MEMBER_HEADERS, timeout=30)
+        if res.status_code == 202 or not res.text or not res.text.strip():
+            print(f"[DEBUG SIGNUP] HTTP {res.status_code} | Headers: {dict(res.headers)} | Yanit: '{res.text}'")
+            return {"status": "FAILED", "code": res.status_code, "error": f"Empty or non-JSON response (HTTP {res.status_code})"}
+        res.raise_for_status()
+        body = res.json()
+        if body.get("status") == "SUCCESS" and "info" in body:
+            decrypted = decrypt_member_auth_response(body["info"], aes_key)
+            return {"status": "SUCCESS", "info": decrypted}
+        return body
+    except Exception as e:
+        raw_text = getattr(res, 'text', '') if 'res' in locals() else ''
+        status = getattr(res, 'status_code', None) if 'res' in locals() else None
+        headers = dict(getattr(res, 'headers', {})) if 'res' in locals() else {}
+        print(f"[DEBUG SIGNUP] Exception: {e} | HTTP {status} | Headers: {headers} | Yanit: '{raw_text}'")
+        return {"status": "FAILED", "error": str(e)}
 
 def activate_account(activation_url: str):
     """Mail gelen aktivasyon linkini takip eder ve hesabi aktiflestirir."""
@@ -3993,7 +4003,9 @@ def get_or_create_active_account(api_key_id, task_id=None, force_new=False):
                 except Exception:
                     pass
             return member_token, acc_data
-        time.sleep(2)
+        if attempt < 4:
+            print(f"[ACCOUNT] Registration attempt {attempt+1} failed. Waiting 10s before retry...")
+            time.sleep(10)
 
     return None, None
 
@@ -4081,6 +4093,34 @@ def deduct_api_key_quota(api_key_id, task_id=None):
         print(f"[QUOTA] Error deducting quota: {e}")
         return None
 
+def refund_api_key_quota(api_key_id, consumed_emails, task_id=None):
+    """Refunds previously deducted accounts/quotas back to used = 0 upon task failure/error.
+    Ensures that if a task fails, quota is immediately restored.
+    """
+    if not consumed_emails:
+        return
+    if isinstance(consumed_emails, str):
+        consumed_emails = [consumed_emails]
+    try:
+        conn = db.get_connection()
+        cursor = conn.cursor()
+        if db.DB_TYPE == 'postgresql':
+            cursor.execute(
+                'UPDATE accounts SET used = 0 WHERE api_key_id = %s AND email = ANY(%s)',
+                (api_key_id, list(consumed_emails))
+            )
+        else:
+            placeholders = ','.join(['?'] * len(consumed_emails))
+            cursor.execute(
+                f'UPDATE accounts SET used = 0 WHERE api_key_id = ? AND email IN ({placeholders})',
+                [api_key_id] + list(consumed_emails)
+            )
+        conn.commit()
+        conn.close()
+        print(f"[QUOTA] Successfully refunded {len(consumed_emails)} quota units for task {task_id}.")
+    except Exception as e:
+        print(f"[QUOTA] Error refunding quota for task {task_id}: {e}")
+
 def login_with_retry_and_link(api_key_id, task_id=None):
     """Compatibility wrapper for obtaining active account."""
     return get_or_create_active_account(api_key_id, task_id)
@@ -4098,6 +4138,7 @@ def save_b64_to_temp_file(b64_data, suffix=".jpg"):
 
 def process_image_task(task_id, params, api_key_id):
     temp_files = []
+    deducted_accounts = None
     try:
         db.update_task_status(task_id, 'running')
 
@@ -4106,6 +4147,9 @@ def process_image_task(task_id, params, api_key_id):
         aspect_ratio = params.get('size', '1:1')
         resolution = params.get('resolution', '1K')
         batch_size = int(params.get('batch_size', 1))
+
+        # Kota gorev basinda pesin dusulur
+        deducted_accounts = deduct_api_key_quota(api_key_id, task_id)
 
         # Handle reference images (Image-to-Image)
         reference_images = []
@@ -4118,6 +4162,8 @@ def process_image_task(task_id, params, api_key_id):
 
         model_data = IMAGE_MODELS_CONFIG.get(model)
         if not model_data:
+            if deducted_accounts:
+                refund_api_key_quota(api_key_id, deducted_accounts, task_id)
             db.update_task_status(task_id, 'failed')
             db.add_task_log(task_id, "400")
             return
@@ -4134,6 +4180,8 @@ def process_image_task(task_id, params, api_key_id):
             force_new = (attempt > 0)
             member_token, account = get_or_create_active_account(api_key_id, task_id=task_id, force_new=force_new)
             if not member_token:
+                if deducted_accounts:
+                    refund_api_key_quota(api_key_id, deducted_accounts, task_id)
                 db.update_task_status(task_id, 'failed')
                 db.add_task_log(task_id, "503")
                 return
@@ -4203,6 +4251,8 @@ def process_image_task(task_id, params, api_key_id):
                 break
 
         if not result:
+            if deducted_accounts:
+                refund_api_key_quota(api_key_id, deducted_accounts, task_id)
             db.update_task_status(task_id, 'failed')
             db.add_task_log(task_id, format_error_code(last_error))
             return
@@ -4228,22 +4278,29 @@ def process_image_task(task_id, params, api_key_id):
 
             if completed_files:
                 db.update_task_status(task_id, 'completed', completed_files[0])
-                deduct_api_key_quota(api_key_id, task_id)
                 post_credits_info = get_member_remaining_credits(current_token)
                 post_credits = post_credits_info.get("total_remain", "?") if post_credits_info else "?"
                 print(f"[RENDER LOG] [IMAGE TASK: {task_id}] [TAMAMLANDI] -> Hesap: {account['email']} | Kalan Kredi: {post_credits}\n")
             else:
+                if deducted_accounts:
+                    refund_api_key_quota(api_key_id, deducted_accounts, task_id)
                 db.update_task_status(task_id, 'failed')
                 db.add_task_log(task_id, "500")
         elif result.get("status") == "Timeout":
+            if deducted_accounts:
+                refund_api_key_quota(api_key_id, deducted_accounts, task_id)
             db.update_task_status(task_id, 'timeout')
             db.add_task_log(task_id, "504")
         else:
+            if deducted_accounts:
+                refund_api_key_quota(api_key_id, deducted_accounts, task_id)
             db.update_task_status(task_id, 'failed')
             db.add_task_log(task_id, format_error_code(result.get('error')))
 
     except Exception as e:
         print(f"[ERROR] Image task {task_id} error: {e}")
+        if deducted_accounts:
+            refund_api_key_quota(api_key_id, deducted_accounts, task_id)
         db.update_task_status(task_id, 'error')
         db.add_task_log(task_id, format_error_code(e))
     finally:
@@ -4256,6 +4313,7 @@ def process_image_task(task_id, params, api_key_id):
 
 def process_video_task(task_id, params, api_key_id):
     temp_files = []
+    deducted_accounts = None
     try:
         db.update_task_status(task_id, 'running')
 
@@ -4265,6 +4323,9 @@ def process_video_task(task_id, params, api_key_id):
         resolution = params.get('resolution', '720p')
         duration = int(params.get('duration', 5))
         sound = params.get('sound', 'vendor')
+
+        # Kota gorev basinda pesin dusulur
+        deducted_accounts = deduct_api_key_quota(api_key_id, task_id)
 
         input_mode = "TextToVideo"
         source_image_path = None
@@ -4305,6 +4366,8 @@ def process_video_task(task_id, params, api_key_id):
 
         model_data = VIDEO_MODELS_CONFIG.get(model)
         if not model_data:
+            if deducted_accounts:
+                refund_api_key_quota(api_key_id, deducted_accounts, task_id)
             db.update_task_status(task_id, 'failed')
             db.add_task_log(task_id, "400")
             return
@@ -4318,6 +4381,8 @@ def process_video_task(task_id, params, api_key_id):
             force_new = (attempt > 0)
             member_token, account = get_or_create_active_account(api_key_id, task_id=task_id, force_new=force_new)
             if not member_token:
+                if deducted_accounts:
+                    refund_api_key_quota(api_key_id, deducted_accounts, task_id)
                 db.update_task_status(task_id, 'failed')
                 db.add_task_log(task_id, "503")
                 return
@@ -4393,6 +4458,8 @@ def process_video_task(task_id, params, api_key_id):
                 break
 
         if not result:
+            if deducted_accounts:
+                refund_api_key_quota(api_key_id, deducted_accounts, task_id)
             db.update_task_status(task_id, 'failed')
             db.add_task_log(task_id, format_error_code(last_error))
             return
@@ -4419,22 +4486,26 @@ def process_video_task(task_id, params, api_key_id):
 
             if video_file:
                 db.update_task_status(task_id, 'completed', video_file)
-                deduct_api_key_quota(api_key_id, task_id)
             else:
                 db.update_task_status(task_id, 'completed', completed_files[0] if completed_files else "")
-                deduct_api_key_quota(api_key_id, task_id)
             post_credits_info = get_member_remaining_credits(current_token)
             post_credits = post_credits_info.get("total_remain", "?") if post_credits_info else "?"
             print(f"[RENDER LOG] [VIDEO TASK: {task_id}] [TAMAMLANDI] -> Hesap: {account['email']} | Kalan Kredi: {post_credits}\n")
         elif result.get("status") == "Timeout":
+            if deducted_accounts:
+                refund_api_key_quota(api_key_id, deducted_accounts, task_id)
             db.update_task_status(task_id, 'timeout')
             db.add_task_log(task_id, "504")
         else:
+            if deducted_accounts:
+                refund_api_key_quota(api_key_id, deducted_accounts, task_id)
             db.update_task_status(task_id, 'failed')
             db.add_task_log(task_id, format_error_code(result.get('error')))
 
     except Exception as e:
         print(f"[ERROR] Video task {task_id} error: {e}")
+        if deducted_accounts:
+            refund_api_key_quota(api_key_id, deducted_accounts, task_id)
         db.update_task_status(task_id, 'error')
         db.add_task_log(task_id, format_error_code(e))
     finally:
